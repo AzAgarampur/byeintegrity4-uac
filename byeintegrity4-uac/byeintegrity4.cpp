@@ -522,6 +522,7 @@ int main()
 	}
 	
 	hr = fwCplLua->LaunchAdvancedUI();
+	Sleep(1500);
 	RegDeleteValueW(key, L"windir");
 	RegFlushKey(key);
 	RegCloseKey(key);
