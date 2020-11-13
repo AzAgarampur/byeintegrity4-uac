@@ -4,13 +4,9 @@
     <ClCompile Include="byeintegrity4.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="resource.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="byeintegrity4-uac.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\byeintegrity4-mmcpayload.msc" />
-    <None Include="README.md" />
+    <ClInclude Include="resource.hpp" />
   </ItemGroup>
 </Project>

