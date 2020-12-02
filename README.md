@@ -2,6 +2,10 @@
 The fourth attack to bypass User Account Control (UAC) and gain elevated (Administrator) privileges to run any program at a high integrity level.
 ![](example.gif)
 
+## Requirements
+- Administrator account
+- UAC notification level set to default or lower
+
 ## How it works
 ByeIntegrity 4.0 uses the same attack methods ByeIntegrity 3.0 uses. However, ByeIntegrity 4.0 has one more crucial method that allows this attack to be possible — environment variable modification.
 
